@@ -79,7 +79,9 @@ Assuming you have a valid NugetAPI key in the psgalleryapi.txt file in your prof
 **Note:** *I've not figured out yet how to reset versions when uploading to the gallery. You always have to upload a newer version than what is already there so be extra certain you are ready to publish the module before doing this step.*
 
 ### Step 4 - Start Your Next Release
-When you have finally uploaded your current release to github the version number will go up by 1 in the minor version release portion (so 0.0.1 will become 0.0.2). This is done in the version.txt file within your project directory. If you go to build the current module again it will poop out as the version release in this file does not match the version found in your module manifest file. This is by design. In order to confirm you are ready to start working on this release you need to run the following:
+~~When you have finally uploaded your current release to github the version number will go up by 1 in the minor version release portion (so 0.0.1 will become 0.0.2).~~ (<--Not implemented yet)
+
+To start working on your next release you will need to update the version.txt file within your project directory. But if you go to build the current module again it will poop out as the version release in this file does not match the version found in your module manifest file. This is by design. In order to confirm you are ready to start working on this release you need to run the following.
 
 `.\Build.ps1 -UpdateRelease`
 
