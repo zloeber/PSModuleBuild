@@ -1,6 +1,6 @@
 # PSModuleBuild
 
-This is a set of build task for kicking off a PowerShell module project and building regular releases of the project.
+This is a set of build tasks for kicking off a PowerShell module project and building regular releases of the project.
 
 ##Usage
 This is more of a scaffolding framework which can be used to kickstart a generic PowerShell module project. It includes the starting files and scripts needed to perform regular build releases, uploading to the powershell gallery, and other such fun. All the hard stuff is based around the excellent invoke-build project.
