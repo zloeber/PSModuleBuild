@@ -26,7 +26,7 @@ This will start with opening up the .environment.ps1 file in notepad for editing
 
 **Note**: *The starting module manifest file should be updated to suit your needs. The only items which ever get automatically updated in this file later on will be the version number and the exported functions. If you have exported aliases or other customizations the build process will do nothing to detect these things.*
 
-Later you can always edit this file to change options in the build or even move paths and such but you should NEVER run the Initialize.ps1 script again. Towards this end this script deletes the .initialize.ps1 invoke-build task script. If you goofed up then simply blow things away and start from scratch.
+Later you can always edit this file to change options in the build or even move paths and such but you should NEVER run the Initialize.ps1 script again. Towards this end this script deletes the .createframework.ps1 invoke-build task script. If you goofed up then simply blow things away and start from scratch.
 
 You should go ahead and delete the initialize.ps1 script from your project root directory at this time as it is no longer usable.
 
