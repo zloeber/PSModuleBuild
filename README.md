@@ -65,7 +65,7 @@ If you have plans to upload your module to the PowerShell Gallery then this buil
 
 `.\Build.ps1 -CreatePSGalleryProfile`
 
-The command is a bit of a misnomer as all it will do is create a local file which will be parsed when uploading to the PowerShell gallery site. You still need to create an account and attain an API key from the PowerShell Gallery ![website](https://www.powershellgallery.com/).
+The command is a bit of a misnomer as all it will do is create a local file which will be parsed when uploading to the PowerShell gallery site. You still need to create an account and attain an API key from the PowerShell Gallery [website](https://www.powershellgallery.com/).
 
 Once you have attained your API key you will need to save a copy of it within your powershell profile (it would be silly to keep it in your project folder that may get shared with others or accidentally uploaded for public consumption). Run the following to create the correct file for pasting your key into.
 
