@@ -78,6 +78,7 @@ task CreateModuleAboutHelp {
     $null = New-Item -Type:Directory -Name 'en-US' -Path .\ -Force
     (Get-Content -Raw .\build\templates\about_ModuleName.help.txt) `
         -replace '{{ModuleName}}',$ModuleToBuild `
+        -replace '{{ModuleDescription}}', $ModuleDescription `
         -replace '{{Tags}}',($ModuleTags -join ',') `
         -replace '{{HelpLink}}',$ModuleWebsite | Out-File ".\en-US\about_$($ModuleToBuild).help.txt" -Force -Encoding:utf8
     Write-Host -ForegroundColor Green '...Done!' 

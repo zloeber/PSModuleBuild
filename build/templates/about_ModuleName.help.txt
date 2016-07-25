@@ -2,13 +2,13 @@ TOPIC
     about_{{ModuleName}}
 
 SHORT DESCRIPTION
-    {{ModuleShortDescription}}
+    {{ModuleDescription}}
 
 LONG DESCRIPTION
-    {{ModuleLongDescription}}
+    {{ModuleDescription}}
 
 EXAMPLES
-    {{An Example}}
+    TBD
 
 KEYWORDS
     {{Tags}}

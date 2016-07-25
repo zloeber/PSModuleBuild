@@ -27,6 +27,10 @@ $OptionFormatCode = $false
 $OptionAnalyzeCode = $true
 $OptionCombineFiles = $true
 
+# Additional paths in the source module which should be copied over to the final build release
+# Example: @('.\libs','.\data')
+$AdditionalModulePaths = @()
+
 # Please leave anything below this line alone
 $ModuleToBuild, $ModuleWebsite, $ModuleAuthor, $ModuleDescription | Foreach {
     if ([string]::IsNullOrEmpty($_)) {

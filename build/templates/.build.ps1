@@ -51,7 +51,7 @@ $ReleasePath = Join-Path $ScriptRoot $BaseReleaseFolder
 $CurrentReleasePath = Join-Path $ReleasePath $CurrentReleaseFolder
 
 $StageReleasePath = Join-Path $ScratchPath $BaseReleaseFolder   # Just before releasing the module we stage some changes in this location.
-$ReleaseModule = "$($StageReleasePath)\$($ModuleToBuild).psd1"
+$ReleaseModule = "$($StageReleasePath)\$($ModuleToBuild).psm1"
 
 # Additional build scripts and tools are found here (note that any dot sourced functions must be scoped at the script level)
 $BuildToolPath = Join-Path $ScriptRoot $BuildToolFolder
@@ -111,7 +111,7 @@ task CreateModuleManifest -After CreateModulePSM1 {
     #Replace-FileString -Pattern "PrivateData = ''"  $NewPrivateDataString $StageReleasePath\$ModuleToBuild.psd1 -Overwrite -Encoding 'UTF8'
     $OldManifest = Get-Content -Path $ModuleManifestFullPath -Raw
     if ($OldManifest -match "FunctionsToExport = \'\*\'") {
-        $NewFunctionsToExport =  "FunctionsToExport = " + (Convert-ArrayToString $Script:FunctionsToExport)
+        $NewFunctionsToExport =  "FunctionsToExport = " + ((Convert-ArrayToString $Script:FunctionsToExport -Flatten) -replace '@\(','' -replace '\)','')
         $OldManifest -replace "FunctionsToExport = \'\*\'",$NewFunctionsToExport | Out-File -FilePath $PSD1OutputFile -force -Encoding:utf8
     }
     else {
@@ -200,6 +200,9 @@ task PrepareStage {
     Copy-Item -Path "$($ScriptRoot)\$($PrivateFunctionSource)" -Recurse -Destination "$($ScratchPath)\$($PrivateFunctionSource)"
     Copy-Item -Path "$($ScriptRoot)\$($OtherModuleSource)" -Recurse -Destination "$($ScratchPath)\$($OtherModuleSource)"
     Copy-Item -Path "$($ScriptRoot)\en-US" -Recurse -Destination $ScratchPath
+    $Script:AdditionalModulePaths | ForEach {
+        Copy-Item -Path $_ -Recurse -Destination $ScratchPath -Force
+    }
 }
 
 # Synopsis:  Collect a list of our public methods for later module manifest updates
@@ -221,13 +224,13 @@ task GetPublicFunctions {
 # Synopsis: Assemble the module for release
 task CreateModulePSM1 {
     if ($Script:OptionCombineFiles) {
-        $CombineFiles = "## OTHER MODULE FUNCTIONS AND DATA ##`r`n`r`n"
+        $CombineFiles = "## Pre-Loaded Module code ##`r`n`r`n"
         Write-Host "      Other Source Files: $($ScratchPath)\$($OtherModuleSource)"
-        Get-childitem  (Join-Path $ScratchPath "$($OtherModuleSource)\*.ps1") | foreach {
+        Get-childitem  (Join-Path $ScratchPath "$($OtherModuleSource)\PreLoad.ps1") | foreach {
             Write-Host "             $($_.Name)"
             $CombineFiles += (Get-content $_ -Raw) + "`r`n`r`n"
         }
-        Write-Host -NoNewLine "      Combining other source files"
+        Write-Host -NoNewLine "      Combining preload source"
         Write-Host -ForegroundColor Green '...Complete!'
 
         $CombineFiles += "## PRIVATE MODULE FUNCTIONS AND DATA ##`r`n`r`n"
@@ -247,18 +250,30 @@ task CreateModulePSM1 {
         }
         Write-Host -NoNewline "      Combining public source files"
         Write-Host -ForegroundColor Green '...Complete!'
+        $CombineFiles += "## Post-Load Module code ##`r`n`r`n"
+        Write-Host "      Other Source Files: $($ScratchPath)\$($OtherModuleSource)"
+        Get-childitem  (Join-Path $ScratchPath "$($OtherModuleSource)\PostLoad.ps1") | foreach {
+            Write-Host "             $($_.Name)"
+            $CombineFiles += (Get-content $_ -Raw) + "`r`n`r`n"
+        }
+        Write-Host -NoNewLine "      Combining postload source"
+        Write-Host -ForegroundColor Green '...Complete!'
     
-        Set-Content $Script:ReleaseModule ($CombineFiles) -Encoding UTF8
+        Set-Content -Path $Script:ReleaseModule  -Value $CombineFiles -Encoding UTF8
         Write-Host -NoNewLine '      Combining module functions and data into one PSM1 file'
         Write-Host -ForegroundColor Green '...Complete!'
     }
     else {
-        Copy-Item -Path (Join-Path $ScratchPath "$($OtherModuleSource)\*.ps1") -Recurse -Destination $StageReleasePath -Force
-        Copy-Item -Path (Join-Path $ScratchPath "$($PrivateFunctionSource)\*.ps1") -Recurse -Destination $StageReleasePath -Force
-        Copy-Item -Path (Join-Path $ScratchPath "$($PublicFunctionSource)\*.ps1") -Recurse -Destination $StageReleasePath -Force
-        Copy-Item -Path (Join-Path $ScratchPath "$($ModuleToBuild).psm1") -Destination $StageReleasePath -Force
+        Copy-Item -Path (Join-Path $ScratchPath $OtherModuleSource) -Recurse -Destination $StageReleasePath -Force
+        Copy-Item -Path (Join-Path $ScratchPath $PrivateFunctionSource) -Recurse -Destination $StageReleasePath -Force
+        Copy-Item -Path (Join-Path $ScratchPath $PublicFunctionSource) -Recurse -Destination $StageReleasePath -Force
+        Copy-Item -Path (Join-Path $ScratchPath $ModuleToBuild) -Destination $StageReleasePath -Force
         Write-Host -NoNewLine '      Copy over source and psm1 files'
         Write-Host -ForegroundColor Green '...Complete!'
+    }
+
+    $Script:AdditionalModulePaths | ForEach {
+        Copy-Item -Path $_ -Recurse -Destination $StageReleasePath -Force
     }
 }
 
@@ -397,7 +412,7 @@ task CreateUpdateableHelpCAB {
 task PushVersionRelease {
     $ThisReleasePath = Join-Path $ReleasePath $Script:Version
     $null = Remove-Item $ThisReleasePath -Force -Recurse -ErrorAction 0
-    $null = New-Item $ThisReleasePath -ItemType:Directory
+    $null = New-Item $ThisReleasePath -ItemType:Directory -Force
     Copy-Item -Path "$($StageReleasePath)\*" -Destination $ThisReleasePath -Recurse
     Out-Zip $StageReleasePath $ReleasePath\$ModuleToBuild'-'$Version'.zip' -overwrite
     Write-Host -NoNewLine "      Pushing a version release to $($ThisReleasePath)"
@@ -407,8 +422,8 @@ task PushVersionRelease {
 # Synopsis: Create the current release directory and copy this build to it.
 task PushCurrentRelease {
     $null = Remove-Item $CurrentReleasePath -Force -Recurse -ErrorAction 0
-    $null = New-Item $CurrentReleasePath -ItemType:Directory
-    Copy-Item -Path "$($StageReleasePath)\*" -Destination $CurrentReleasePath -Recurse
+    $null = New-Item $CurrentReleasePath -ItemType:Directory -Force
+    Copy-Item -Path "$($StageReleasePath)\*" -Destination $CurrentReleasePath -Recurse -force
     Out-Zip $StageReleasePath $ReleasePath\$ModuleToBuild'-current.zip' -overwrite
     Write-Host -NoNewLine "      Pushing a version release to $($CurrentReleasePath)"
     Write-Host -ForeGroundColor green '...Complete!'
@@ -541,3 +556,6 @@ task BuildWithoutCodeFormatting `
 
 # Synopsis: Test the code formatting module only
 task TestCodeFormatting Configure, Clean, PrepareStage, GetPublicFunctions, FormatCode
+
+# Synopsis: Build help files for module and ignore missing section errors
+task TestCreateHelp Configure, CreateMarkdownHelp, CreateExternalHelp, CreateUpdateableHelpCAB

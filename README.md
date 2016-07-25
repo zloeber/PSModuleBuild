@@ -51,7 +51,7 @@ The default version for a brand new module is set at 0.0.1. To build this module
 `.\Build.ps1`
 
 This will go throught he process of combining the source files, populating the exportable functions, creating online help files, formatting the code, analyzing the script, and more. If everything builds without errors you will see the results populated in the release directory in two areas:
-1. In the release directory in a folder with the same name as the module
+1. In the release directory in a folder with the same name as the module (which is best practice btw)
 2. In the release directory in a folder with the version number of the release.
 
 **Note**: *If you run the build process again it will overwrite the version and current directory.*
@@ -89,16 +89,49 @@ Once this has been done you can proceed to build your module again:
 
 `.\Build.ps1`
 
+## Notes
+- I'm keep any function documentation within the comment based help for the function. The build process uses PlatyPS to generate the relevant help files and will fail if "{{ blah blah blah }}" is found to have been created in the output files (as these are meant to be replaced manually for any information PlatyPS is unable to locate). The CBH for each function gets replaced with the generated module documentation link. I base this replacement code on '.SYNOPSIS' existing in the comment based help. This is done in the following task:
+```
+task UpdateCBH -Before CreateModulePSM1 {
+    $CBHPattern = "(?ms)(\<#.*\.SYNOPSIS.*?#>)"
+    Get-ChildItem -Path "$($ScratchPath)\$($PublicFunctionSource)\*.ps1" -File | ForEach {
+            $FormattedOutFile = $_.FullName
+            Write-Output "      Replacing CBH in file: $($FormattedOutFile)"
+            $UpdatedFile = (get-content  $FormattedOutFile -raw) -replace $CBHPattern, $ExternalHelp
+            $UpdatedFile | Out-File -FilePath $FormattedOutFile -force -Encoding:utf8
+     }
+}
+```
+
+- I recreate the documentation markdown files every time I run the build. This includes the module landing page. PlatyPS doesn't seem to automatically pull in function description information (or I'm missing something in the usage of this module) so I do so within another task behind the scenes.
+- I use PowerShellGet for module installation in the configuration task. This necessitates PowerShell 5 as far as I know.
+- The root module files are my development files which are hosted in github. The release files are hosted in github as well. So someone can still simply pull the whole directory structure and install the module that way I suppose.
+- There are two special files in the src\other directory:
+
+ 1. PreLoad.ps1 is dot sourced at the beginning of the module (and in the build it is the first file to populate the final combined psm1 file).
+ 2. PostLoad.ps1 is dot sourced at the end of the module (and is the last file to populate the final combined psm1 file).
+
+ This is meant to help a little with some difference scenarios and could easily be expanded upon (perhaps a different file for exported variables and aliases that are AST parsed and converted into the correct replacements in the final psd1 file?)
+- If you are exporting more than just functions (variables, aliases, et cetera) go ahead and put them in your PostLoad.ps1 file with your Export-ModuleMember command. Just remember that the moment you use Export-ModuleMember it will become the dominant preference for exporting functions as well! So ensure you also specify the functions to export or * when using this command. In this regard maybe think of your manifest file as a filter whenever you use the export-modulemember command but as the actual definition for what gets exported when no export-modulemember command is found (and note that this behavior is ONLY for functions, what a nonsensical design decision...)
+- A default skeleton for the module about help txt file is created in a default en-US directory. This file should be updated with a real life example of how to use the module.
+- I include a set of scripts in the build\dotsource directory that get used in various build tasks. If you want to add another script and task just beware that the scope of the functions are manually defined at the script level so that they remain available to other tasks after the task that dot sources them is completed. It's weird but, hey... at least I'm not using global scoping anywhere right?
+
 ##Some Missing Stuff
-I need to get pester testing and git pushing finished up. The tasks are there for the git stuff but nothing has been done for Pester yet (shame on me).
+- I need to get pester testing and git pushing finished up. The tasks are there for the git stuff but nothing has been done for Pester yet (shame on me).
+- I need to add a verbosity setting for instances where a build fails due to PlatyPS for easier isolation of CBH conversion issues.
+- I need to implement a better logging to file mechanism.
+- Probably should strip out full paths from the various on screen output to be more 'build-like' (or at least set an option to do so)
+- I need to probably figure out a way to update the build script on an already deployed module.
+- I really should deploy the current version of invoke-build with this script instead of depending on PowerShellGet (in case a newer version breaks things). I should actually do that for all the modules used in this project)
 
 
 ##Credits
-[Haroopad](http://pad.haroopress.com/) - Sweet Markdown Editor
+[Invoke-Build](https://github.com/nightroman/Invoke-Build) - A kick ass build automation tool written in PowerShell. It is the primary engine behind this little project.
 
-[PowerShell Practice and Style](https://github.com/PoshCode/PowerShellPracticeAndStyle)
+[Haroopad](http://pad.haroopress.com/) - Sweet Markdown Editor.
 
-[Invoke-Build](https://github.com/nightroman/Invoke-Build) - A kick ass build automation tool written in PowerShell
+[PowerShell Practice and Style](https://github.com/PoshCode/PowerShellPracticeAndStyle) - Great site to read over to learn everything you are needing to do to up your game in PowerShell.
+
 
 
 
