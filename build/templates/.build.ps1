@@ -66,6 +66,8 @@ $IsConfigured = $False
 $ExternalHelp = @"
 <#
     .EXTERNALHELP $($ModuleToBuild)-help.xml
+    .LINK
+        {{LINK}}
     #>
 "@
 
@@ -115,8 +117,7 @@ task CreateModuleManifest -After CreateModulePSM1 {
         $OldManifest -replace "FunctionsToExport = \'\*\'",$NewFunctionsToExport | Out-File -FilePath $PSD1OutputFile -force -Encoding:utf8
     }
     else {
-        Write-Warning "Unable to find the FunctionsToExport = '*' in the manifest file :("
-        Write-Warning " Copying over the existing PSM1 file and hoping for the best!"
+        Write-Warning "Unable to find the FunctionsToExport = '*' in the manifest file, copying over the existing PSM1 file and hoping for the best!"
         Copy-Item $ModuleManifestFullPath $StageReleasePath
     }
     Write-Host -ForegroundColor Green '...Loaded!'
@@ -317,8 +318,11 @@ task UpdateCBH -Before CreateModulePSM1 {
     $CBHPattern = "(?ms)(\<#.*\.SYNOPSIS.*?#>)"
     Get-ChildItem -Path "$($ScratchPath)\$($PublicFunctionSource)\*.ps1" -File | ForEach {
             $FormattedOutFile = $_.FullName
-            Write-Output "      Replacing CBH in file: $($FormattedOutFile)"
-            $UpdatedFile = (get-content  $FormattedOutFile -raw) -replace $CBHPattern, $ExternalHelp
+            $FileName = $_.Name
+            Write-Output "      Replacing CBH in file: $($FileName)"
+            $FunctionName = $FileName -replace '.ps1',''
+            $NewExternalHelp = $ExternalHelp -replace '{{LINK}}',($ModuleWebSite + "/tree/master/$($BaseReleaseFolder)/$($Script:Version)/docs/$($FunctionName).md")
+            $UpdatedFile = (get-content  $FormattedOutFile -raw) -replace $CBHPattern, $NewExternalHelp
             $UpdatedFile | Out-File -FilePath $FormattedOutFile -force -Encoding:utf8
     }
 }

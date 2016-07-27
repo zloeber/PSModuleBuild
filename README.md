@@ -103,6 +103,7 @@ task UpdateCBH -Before CreateModulePSM1 {
 }
 ```
 
+As you might expect this will remove the entire CBH block which may or may not be what you want in your final release.
 - I recreate the documentation markdown files every time I run the build. This includes the module landing page. PlatyPS doesn't seem to automatically pull in function description information (or I'm missing something in the usage of this module) so I do so within another task behind the scenes.
 - I use PowerShellGet for module installation in the configuration task. This necessitates PowerShell 5 as far as I know.
 - The root module files are my development files which are hosted in github. The release files are hosted in github as well. So someone can still simply pull the whole directory structure and install the module that way I suppose.
