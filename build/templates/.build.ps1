@@ -115,7 +115,9 @@ task CreateModuleManifest -After CreateModulePSM1 {
         $OldManifest -replace "FunctionsToExport = \'\*\'",$NewFunctionsToExport | Out-File -FilePath $PSD1OutputFile -force -Encoding:utf8
     }
     else {
-        Write-Error "Unable to find the FunctionsToExport = '*' in the manifest file :("
+        Write-Warning "Unable to find the FunctionsToExport = '*' in the manifest file :("
+        Write-Warning " Copying over the existing PSM1 file and hoping for the best!"
+        Copy-Item $ModuleManifestFullPath $StageReleasePath
     }
     Write-Host -ForegroundColor Green '...Loaded!'
 }
