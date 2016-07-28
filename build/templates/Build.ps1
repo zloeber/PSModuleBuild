@@ -36,7 +36,7 @@ if ($CreatePSGalleryProfile) {
 }
 
 if ($UpdateRelease) {
-
+    Invoke-Build UpdateVersion
 }
 
 if ($UploadPSGallery) {

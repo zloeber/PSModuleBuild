@@ -89,6 +89,9 @@ Once this has been done you can proceed to build your module again:
 
 `.\Build.ps1`
 
+## Examples
+I started this little framework as a build script for [one of my projects](https://github.com/zloeber/FormatPowershellCode) so you can see it in action there if you like. I've since taken that code, made it a bit more generic, and added an initialization routine for new projects. As an exercise I adapted [another older project](https://github.com/zloeber/NLogModule) to use this build script as well. So this framework does work for me but you might need to do some tweaking to get it working for your own project but keep in mind that any module that exports more than functions will take additional work. See the notes below to better understand why.
+
 ## Notes
 - I'm keep any function documentation within the comment based help for the function. The build process uses PlatyPS to generate the relevant help files and will fail if "{{ blah blah blah }}" is found to have been created in the output files (as these are meant to be replaced manually for any information PlatyPS is unable to locate). The CBH for each function gets replaced with the generated module documentation link. I base this replacement code on '.SYNOPSIS' existing in the comment based help. This is done in the following task:
 ```
@@ -103,7 +106,7 @@ task UpdateCBH -Before CreateModulePSM1 {
 }
 ```
 
-As you might expect this will remove the entire CBH block which may or may not be what you want in your final release.
+As you might expect this will remove the entire CBH block which may or may not be what you want in your final release (Update: I've included code to also include the external link based on the version release directory and module website).
 - I recreate the documentation markdown files every time I run the build. This includes the module landing page. PlatyPS doesn't seem to automatically pull in function description information (or I'm missing something in the usage of this module) so I do so within another task behind the scenes.
 - I use PowerShellGet for module installation in the configuration task. This necessitates PowerShell 5 as far as I know.
 - The root module files are my development files which are hosted in github. The release files are hosted in github as well. So someone can still simply pull the whole directory structure and install the module that way I suppose.
