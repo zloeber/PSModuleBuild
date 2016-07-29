@@ -1,15 +1,14 @@
 #Requires -Version 5
 param (
+    [switch]$BuildModule,
     [switch]$CreatePSGalleryProfile,
     [switch]$UpdateRelease,
     [switch]$UploadPSGallery,
     [switch]$GitCheckin,
     [switch]$GitPush,
+    [switch]$InstallAndTestModule,
     [string]$ReleaseNotes
 )
-<#
-	Build script using Invoke-Build (https://github.com/nightroman/Invoke-Build)
-#>
 
 # Install InvokeBuild module if it doesn't already exist
 if ((get-module InvokeBuild -ListAvailable) -eq $null) {
@@ -59,17 +58,27 @@ if ($GitPush) {
 
 }
 
-# If no parameters were specified then kick off a standard build
-if ($psboundparameters.count -eq 0) {
+# If no parameters were specified or the build action was manually specified then kick off a standard build
+if (($psboundparameters.count -eq 0) -or ($BuildModule))  {
     try {
         Invoke-Build
     }
     catch {
-        # If it fails then show the error and try to clean up the environment
         Write-Host -ForegroundColor Red 'Build Failed with the following error:'
         Write-Output $_
     }
 }
+
+if ($InstallAndTestModule) {
+    try {
+        Invoke-Build InstallAndTestModule
+    }
+    catch {
+        Write-Host -ForegroundColor Red 'Install and test of module failed:'
+        Write-Output $_
+    }
+}
+
 
 Write-Host ''
 Write-Host 'Attempting to clean up the session (loaded modules and such)...'

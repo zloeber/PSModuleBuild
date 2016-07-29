@@ -85,12 +85,14 @@ To start working on your next release you will need to update the version.txt fi
 
 `.\Build.ps1 -UpdateRelease`
 
+**Note:** *This will spit out an error as we are running the Version task in safe mode and looking for an error. This lets us reuse the task that we use for loading the version number. If the final build shows as succeeded you have nothing to worry about though.*
+
 Once this has been done you can proceed to build your module again:
 
 `.\Build.ps1`
 
 ## Examples
-I started this little framework as a build script for [one of my projects](https://github.com/zloeber/FormatPowershellCode) so you can see it in action there if you like. I've since taken that code, made it a bit more generic, and added an initialization routine for new projects. As an exercise I adapted [another older project](https://github.com/zloeber/NLogModule) to use this build script as well. So this framework does work for me but you might need to do some tweaking to get it working for your own project but keep in mind that any module that exports more than functions will take additional work. See the notes below to better understand why.
+I started this little framework as a build script for [one of my projects](https://github.com/zloeber/FormatPowershellCode) so you can see it in action there if you like. I've since taken that code, made it a bit more generic, and added an initialization routine for new projects. As an exercise I adapted [another older project](https://github.com/zloeber/NLogModule) to use this build script as well. So this framework does work for me but you might need to do some tweaking to get it working for your own project but keep in mind that any module that exports more than functions will take additional work. (See the notes below to better understand why.)
 
 ## Notes
 - I'm keep any function documentation within the comment based help for the function. The build process uses PlatyPS to generate the relevant help files and will fail if "{{ blah blah blah }}" is found to have been created in the output files (as these are meant to be replaced manually for any information PlatyPS is unable to locate). The CBH for each function gets replaced with the generated module documentation link. I base this replacement code on '.SYNOPSIS' existing in the comment based help. This is done in the following task:

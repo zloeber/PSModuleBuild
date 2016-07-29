@@ -109,18 +109,10 @@ task LoadBuildTools {
 # Synopsis: Create new module manifest
 task CreateModuleManifest -After CreateModulePSM1 {
     $PSD1OutputFile = "$($StageReleasePath)\$($ModuleToBuild).psd1"
-    Write-Host -NoNewLine "      Attempting to create a new module manifest file:  $PSD1OutputFile"
-    #Replace-FileString -Pattern "PrivateData = ''"  $NewPrivateDataString $StageReleasePath\$ModuleToBuild.psd1 -Overwrite -Encoding 'UTF8'
-    $OldManifest = Get-Content -Path $ModuleManifestFullPath -Raw
-    if ($OldManifest -match "FunctionsToExport = \'\*\'") {
-        $NewFunctionsToExport =  "FunctionsToExport = " + ((Convert-ArrayToString $Script:FunctionsToExport -Flatten) -replace '@\(','' -replace '\)','')
-        $OldManifest -replace "FunctionsToExport = \'\*\'",$NewFunctionsToExport | Out-File -FilePath $PSD1OutputFile -force -Encoding:utf8
-    }
-    else {
-        Write-Warning "Unable to find the FunctionsToExport = '*' in the manifest file, copying over the existing PSM1 file and hoping for the best!"
-        Copy-Item $ModuleManifestFullPath $StageReleasePath
-    }
-    Write-Host -ForegroundColor Green '...Loaded!'
+    Write-Host -NoNewLine "      Attempting to update the release module manifest file:  $PSD1OutputFile"
+    $null = Copy-Item -Path $ModuleManifestFullPath -Destination $PSD1OutputFile -Force
+    Update-ModuleManifest -Path $PSD1OutputFile -FunctionsToExport $Script:FunctionsToExport
+    Write-Host -ForegroundColor Green '...Updated!'
 }
 
 # Synopsis: Load the module project
@@ -147,7 +139,7 @@ task LoadModuleManifest {
 }
 
 # Synopsis: Set $script:Version.
-task Version {
+task Version LoadModuleManifest, {
     $Script:Version = [version](Get-Content $VersionFile)
     
     Write-Host -NoNewLine '      Manifest version and the release version (version.txt) are the same?'
@@ -167,7 +159,7 @@ task Configure ValidateRequirements, LoadRequiredModules, LoadModuleManifest, Lo
 task UpdateVersion LoadBuildTools, LoadModuleManifest, LoadModule, (job Version -Safe), {
     assert ($Script:Version -ne $null) 'Unable to pull a version from version.txt!'
     if (error Version) {
-        $ModVer = .{switch -Regex -File $ModuleManifestFullPath {"ModuleVersion\s+=\s+'(\d+\.\d+\.\d+)'" {return $Matches[1]}}}
+       <# $ModVer = .{switch -Regex -File $ModuleManifestFullPath {"ModuleVersion\s+=\s+'(\d+\.\d+\.\d+)'" {return $Matches[1]}}}
         if ($ModVer -ne $null) {
             Write-Host -NoNewline "      Attempting to update the module manifest version ($ModVer) to $(($Script:Version).ToString())"
             $NewManifestVersion = "ModuleVersion = '" + $Script:Version + "'"
@@ -176,7 +168,8 @@ task UpdateVersion LoadBuildTools, LoadModuleManifest, LoadModule, (job Version 
         }
         else {
             throw 'The module manifest file does not seem to contain a ModuleVersion directive!'
-        }
+        }#>
+        Update-ModuleManifest -Path $ModuleManifestFullPath -ModuleVersion $Script:Version
     }
     else {
         Write-Output '      Module manifest version and version found in version.txt are already the same.'
@@ -534,6 +527,36 @@ task BuildSessionCleanup {
     Write-Output "      Removing $ModuleToBuild module  (if loaded)."
     Remove-Module $ModuleToBuild -Erroraction Ignore
 }
+
+# Synopsis: Install the current built module to the local machine
+task InstallModule Version, {
+    $CurrentModulePath = "$($BaseReleaseFolder)\$($Version)"
+    Write-Host -NoNewLine "      Validating $ModuleToBuild (Version $($Version)) exists"
+    assert (Test-Path $CurrentModulePath) 'The current version module has not been built yet!'
+    Write-Host -ForeGroundColor green '...Found!'
+
+    $MyModulePath = "$($env:USERPROFILE)\Documents\WindowsPowerShell\Modules\"
+    $ModuleInstallPath = "$($MyModulePath)$($ModuleToBuild)"
+    if (Test-Path $ModuleInstallPath) {
+        Write-Host -NoNewLine "      Removing installed module $ModuleToBuild"
+        Remove-Item -Path $ModuleInstallPath -Confirm -Recurse
+        assert (-not (Test-Path $ModuleInstallPath)) 'Module already installed and you opted not to remove it. Cancelling install operation!'
+        Write-Host -ForeGroundColor green '...Done!'
+    }
+    
+    Write-Host "      Installing current module:"
+    Write-Host "         Source - $($CurrentModulePath)"
+    Write-Host "         Destination - $($ModuleInstallPath)"
+    Copy-Item -Path $CurrentModulePath -Destination $ModuleInstallPath -Recurse
+}
+
+# Synopsis: Test import the current module
+task TestInstalledModule Version, {
+    Write-Host "      Test importing the current module version $($Script:Version)"
+    Import-Module -Name $ModuleToBuild -MinimumVersion $Script:Version -Force
+}
+
+task InstallAndTestModule InstallModule,TestInstalledModule
 
 # Synopsis: The default build
 task . `
