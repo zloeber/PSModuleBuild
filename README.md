@@ -58,9 +58,24 @@ This will go throught he process of combining the source files, populating the e
 
 At this point you should have a working release you could theoretically have someone manually install if you so desired.
 
-The build will have failed if you didn't have enough comment based help to create the help file.
+**Note:** *The build will pause if you didn't have enough comment based help to create the help file. Now is a chance to look at the created markdown files it references in the temp\docs directory to see what is missing. Use this as a chance to round back on your CBH and update it to fill in the gaps and then restart the build process again. Alternately, you can update the markdown files directly then continue the build process but this is not recommended as it is a temporary solution at best.*
 
-### Step 4 - Setup A PowerShell Gallery Profile (Optional)
+### Step 4 - Test a Release
+You may get a build to complete without errors but that doesn't mean that the module will behave as expected. You can do a quick module install and load test if you like:
+
+`.\Build.ps1 -InstallAndTestModule`
+
+All this does is copy the current realease you have built (based on the current version in version.txt) and copy/replace any existing module found in:
+`$($env:USERPROFILE)\Documents\WindowsPowerShell\Modules\`
+
+If the module path is already found the build script will attempt to confirm overwriting it. Then it tries to load that version of the module. If you have multiple versions installed in multiple locations you may not get accurate results so be cognizant of this (the location and version of the module is displayed in the output for further investigation).
+
+You can combine the build with the install and test of the module if you so desire:
+
+`.\Build.ps1 -BuildModule -InstallAndTestModule`
+
+
+### Step 5 - Setup A PowerShell Gallery Profile (Optional)
 If you have plans to upload your module to the PowerShell Gallery then this build script can help automate the process a bit. But first you will need to create a local profile file with the following command:
 
 `.\Build.ps1 -CreatePSGalleryProfile`
@@ -78,10 +93,10 @@ Assuming you have a valid NugetAPI key in the psgalleryapi.txt file in your prof
 
 **Note:** *I've not figured out yet how to reset versions when uploading to the gallery. You always have to upload a newer version than what is already there so be extra certain you are ready to publish the module before doing this step.*
 
-### Step 4 - Start Your Next Release
+### Step 6 - Start Your Next Release
 ~~When you have finally uploaded your current release to github the version number will go up by 1 in the minor version release portion (so 0.0.1 will become 0.0.2).~~ (<--Not implemented yet)
 
-To start working on your next release you will need to update the version.txt file within your project directory. But if you go to build the current module again it will poop out as the version release in this file does not match the version found in your module manifest file. This is by design. In order to confirm you are ready to start working on this release you need to run the following.
+To start working on your next release (or roll back to a prior release) you will need to update the version.txt file within your project directory. But if you go to build the current module again it will poop out as the version release in this file does not match the version found in your module manifest file. This is by design. In order to confirm you are ready to start working on this release you need to run the following.
 
 `.\Build.ps1 -UpdateRelease`
 
@@ -129,7 +144,7 @@ As you might expect this will remove the entire CBH block which may or may not b
 - I need to implement a better logging to file mechanism.
 - Probably should strip out full paths from the various on screen output to be more 'build-like' (or at least set an option to do so)
 - I need to probably figure out a way to update the build script on an already deployed module.
-- I really should deploy the current version of invoke-build with this script instead of depending on PowerShellGet (in case a newer version breaks things). I should actually do that for all the modules used in this project)
+- I really should deploy the current version of invoke-build with this script instead of depending on PowerShellGet (in case a newer version breaks things). I should actually do that for all the modules used in this project...
 
 
 ##Credits

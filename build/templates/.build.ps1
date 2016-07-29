@@ -109,7 +109,8 @@ task LoadBuildTools {
 # Synopsis: Create new module manifest
 task CreateModuleManifest -After CreateModulePSM1 {
     $PSD1OutputFile = "$($StageReleasePath)\$($ModuleToBuild).psd1"
-    Write-Host -NoNewLine "      Attempting to update the release module manifest file:  $PSD1OutputFile"
+    $ThisPSD1OutputFile = ".\$($ScratchFolder)\$($BaseReleaseFolder)\$($ModuleToBuild).psd1"
+    Write-Host -NoNewLine "      Attempting to update the release module manifest file:  $ThisPSD1OutputFile"
     $null = Copy-Item -Path $ModuleManifestFullPath -Destination $PSD1OutputFile -Force
     Update-ModuleManifest -Path $PSD1OutputFile -FunctionsToExport $Script:FunctionsToExport
     Write-Host -ForegroundColor Green '...Updated!'
@@ -119,9 +120,7 @@ task CreateModuleManifest -After CreateModulePSM1 {
 task LoadModule {
     Write-Host -NoNewLine '      Attempting to load the project module.'
     try {
-        #$Script:Module = Import-Module $ModuleManifestFullPath -Force -PassThru
         $Script:Module = Import-Module $ModuleFullPath -Force -PassThru
-        #$Script:ModuleManifest =  Test-ModuleManifest $ModuleManifestFullPath
         Write-Host -ForegroundColor Green '...Loaded!'
     }
     catch {
@@ -132,7 +131,6 @@ task LoadModule {
 # Synopsis: Import the current module manifest file for processing
 task LoadModuleManifest {
     assert (test-path $ModuleManifestFullPath) "Unable to locate the module manifest file: $ModuleManifestFullPath"
-
     Write-Host -NoNewLine '      Loading the existing module manifest for this module'
     $Script:Manifest = Import-PowerShellDataFile -Path $ModuleManifestFullPath
     Write-Host -ForegroundColor Green '...Loaded!'
@@ -141,7 +139,6 @@ task LoadModuleManifest {
 # Synopsis: Set $script:Version.
 task Version LoadModuleManifest, {
     $Script:Version = [version](Get-Content $VersionFile)
-    
     Write-Host -NoNewLine '      Manifest version and the release version (version.txt) are the same?'
     assert ( ($Script:Manifest).ModuleVersion.ToString() -eq (($Script:Version).ToString())) "The module manifest version ( $($($Script:Manifest).ModuleVersion.ToString()) ) and release version ($($Script:Version)) are mismatched. These must be the same before continuing. Consider running the UpdateVersion task to make the module manifest version the same as the reslease version."
     Write-Host -ForegroundColor Green '...Yup!'
@@ -159,16 +156,6 @@ task Configure ValidateRequirements, LoadRequiredModules, LoadModuleManifest, Lo
 task UpdateVersion LoadBuildTools, LoadModuleManifest, LoadModule, (job Version -Safe), {
     assert ($Script:Version -ne $null) 'Unable to pull a version from version.txt!'
     if (error Version) {
-       <# $ModVer = .{switch -Regex -File $ModuleManifestFullPath {"ModuleVersion\s+=\s+'(\d+\.\d+\.\d+)'" {return $Matches[1]}}}
-        if ($ModVer -ne $null) {
-            Write-Host -NoNewline "      Attempting to update the module manifest version ($ModVer) to $(($Script:Version).ToString())"
-            $NewManifestVersion = "ModuleVersion = '" + $Script:Version + "'"
-            Replace-FileString -Pattern "ModuleVersion\s+=\s+'\d+\.\d+\.\d+'" $NewManifestVersion $ModuleManifestFullPath -Overwrite
-            Write-Host -ForegroundColor Green '...Updated!'
-        }
-        else {
-            throw 'The module manifest file does not seem to contain a ModuleVersion directive!'
-        }#>
         Update-ModuleManifest -Path $ModuleManifestFullPath -ModuleVersion $Script:Version
     }
     else {
@@ -180,7 +167,7 @@ task UpdateVersion LoadBuildTools, LoadModuleManifest, LoadModule, (job Version 
 task Clean {
 	$null = Remove-Item $ScratchPath -Force -Recurse -ErrorAction 0
     $null = New-Item $ScratchPath -ItemType:Directory
-    Write-Host -NoNewLine "      Clean up our scratch/staging directory at $($ScratchPath)" 
+    Write-Host -NoNewLine "      Clean up our scratch/staging directory at .\$($ScratchFolder)" 
     Write-Host -ForegroundColor Green '...Complete!'
 }
 
@@ -207,7 +194,7 @@ task GetPublicFunctions {
     Get-ChildItem "$($ScriptRoot)\$($PublicFunctionSource)" -Recurse -Filter "*.ps1" -File | Sort-Object Name | Foreach { 
        $Exported += ([System.Management.Automation.Language.Parser]::ParseInput((Get-Content -Path $_.FullName -Raw), [ref]$null, [ref]$null)).FindAll({ $args[0] -is [System.Management.Automation.Language.FunctionDefinitionAst] }, $false) | Foreach {$_.Name}
     }
-    # $Script:FunctionsToExport = (Get-ChildItem -Path $ScriptRoot\$($PublicFunctionSource)).BaseName | foreach {$_.ToString()}
+
     if ($Exported.Count -eq 0) {
         Write-Error 'There are no public functions to export!'
     }
@@ -221,7 +208,7 @@ task GetPublicFunctions {
 task CreateModulePSM1 {
     if ($Script:OptionCombineFiles) {
         $CombineFiles = "## Pre-Loaded Module code ##`r`n`r`n"
-        Write-Host "      Other Source Files: $($ScratchPath)\$($OtherModuleSource)"
+        Write-Host "      Other Source Files: .\$($ScratchFolder)\$($OtherModuleSource)"
         Get-childitem  (Join-Path $ScratchPath "$($OtherModuleSource)\PreLoad.ps1") | foreach {
             Write-Host "             $($_.Name)"
             $CombineFiles += (Get-content $_ -Raw) + "`r`n`r`n"
@@ -230,7 +217,7 @@ task CreateModulePSM1 {
         Write-Host -ForegroundColor Green '...Complete!'
 
         $CombineFiles += "## PRIVATE MODULE FUNCTIONS AND DATA ##`r`n`r`n"
-        Write-Host  "      Private Source Files: $($ScratchPath)\$($PrivateFunctionSource)"
+        Write-Host  "      Private Source Files: .\$($ScratchFolder)\$($PrivateFunctionSource)"
         Get-childitem  (Join-Path $ScratchPath "$($PrivateFunctionSource)\*.ps1") | foreach {
             Write-Host "             $($_.Name)"
             $CombineFiles += (Get-content $_ -Raw) + "`r`n`r`n"
@@ -247,7 +234,7 @@ task CreateModulePSM1 {
         Write-Host -NoNewline "      Combining public source files"
         Write-Host -ForegroundColor Green '...Complete!'
         $CombineFiles += "## Post-Load Module code ##`r`n`r`n"
-        Write-Host "      Other Source Files: $($ScratchPath)\$($OtherModuleSource)"
+        Write-Host "      Other Source Files: .\$($ScratchFolder)\$($OtherModuleSource)"
         Get-childitem  (Join-Path $ScratchPath "$($OtherModuleSource)\PostLoad.ps1") | foreach {
             Write-Host "             $($_.Name)"
             $CombineFiles += (Get-content $_ -Raw) + "`r`n`r`n"
@@ -410,22 +397,38 @@ task CreateUpdateableHelpCAB {
 # Synopsis: Create a new version release directory for our release and copy our contents to it
 task PushVersionRelease {
     $ThisReleasePath = Join-Path $ReleasePath $Script:Version
+    $ThisBuildReleasePath =  ".\$($BaseReleaseFolder)\$($Script:Version)"
     $null = Remove-Item $ThisReleasePath -Force -Recurse -ErrorAction 0
     $null = New-Item $ThisReleasePath -ItemType:Directory -Force
     Copy-Item -Path "$($StageReleasePath)\*" -Destination $ThisReleasePath -Recurse
     Out-Zip $StageReleasePath $ReleasePath\$ModuleToBuild'-'$Version'.zip' -overwrite
-    Write-Host -NoNewLine "      Pushing a version release to $($ThisReleasePath)"
+    Write-Host -NoNewLine "      Pushing a version release to $($ThisBuildReleasePath)"
     Write-Host -ForeGroundColor green '...Complete!'
 }
 
 # Synopsis: Create the current release directory and copy this build to it.
 task PushCurrentRelease {
-    $null = Remove-Item $CurrentReleasePath -Force -Recurse -ErrorAction 0
-    $null = New-Item $CurrentReleasePath -ItemType:Directory -Force
-    Copy-Item -Path "$($StageReleasePath)\*" -Destination $CurrentReleasePath -Recurse -force
-    Out-Zip $StageReleasePath $ReleasePath\$ModuleToBuild'-current.zip' -overwrite
-    Write-Host -NoNewLine "      Pushing a version release to $($CurrentReleasePath)"
-    Write-Host -ForeGroundColor green '...Complete!'
+    $ThisBuildCurrentReleasePath =  ".\$($BaseReleaseFolder)\$($CurrentReleaseFolder)"
+    $MostRecentRelease = (Get-ChildItem $ReleasePath -Directory | Where {$_.Name -like "*.*.*"} | select Name).name | foreach {[version]$_} | Sort-Object -Descending | Select -First 1
+    $ProcessCurrentRelease = $true
+    if ($MostRecentRelease){
+        if ($MostRecentRelease -gt [version]$Script:Version) {
+            $ProcessCurrentRelease = $false
+        }
+    }
+    if ($ProcessCurrentRelease) {
+        $null = Remove-Item $CurrentReleasePath -Force -Recurse -ErrorAction 0
+        $null = New-Item $CurrentReleasePath -ItemType:Directory -Force
+        Copy-Item -Path "$($StageReleasePath)\*" -Destination $CurrentReleasePath -Recurse -force
+        Out-Zip $StageReleasePath $ReleasePath\$ModuleToBuild'-current.zip' -overwrite
+        Write-Host -NoNewLine "      Pushing a version release to $($ThisBuildCurrentReleasePath)"
+        Write-Host -ForeGroundColor green '...Complete!'
+    }
+    else {
+        Write-Warning '      Unable to push this version as a current release as it is not the most recent version in the release directory!'
+        Write-Host -NoNewLine "      Pushing a version release to $($CurrentReleasePath)"
+        Write-Host -ForeGroundColor Yellow '...Not Done!'
+    }
 }
 
 # Synopsis: Push with a version tag.
@@ -552,8 +555,19 @@ task InstallModule Version, {
 
 # Synopsis: Test import the current module
 task TestInstalledModule Version, {
+    $InstalledModules = @(Get-Module -ListAvailable $ModuleToBuild)
+    assert ($InstalledModules.Count -gt 0) 'Unable to find that the module is installed!'
+    if ($InstalledModules.Count -gt 1) {
+        Write-Warning 'There are multiple installed modules found for this project (shown below). Be aware that this may skew the test results: '
+        Write-Host ''
+        $InstalledModules | Foreach {
+            Write-Host -foregroundcolor yellow "      $($_.ModuleBase) - $($_.Version)"
+        }
+        Write-Host ''
+    }
     Write-Host "      Test importing the current module version $($Script:Version)"
     Import-Module -Name $ModuleToBuild -MinimumVersion $Script:Version -Force
+    Write-Host -ForeGroundColor green '...Done!'
 }
 
 task InstallAndTestModule InstallModule,TestInstalledModule
