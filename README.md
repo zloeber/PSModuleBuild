@@ -3,9 +3,10 @@
 This is a set of build tasks for kicking off a PowerShell module project and building regular releases of the project.
 
 ##Usage
-This is more of a scaffolding framework which can be used to kickstart a generic PowerShell module project. It includes the starting files and scripts needed to perform regular build releases, uploading to the powershell gallery, and other such fun. All the hard stuff is based around the excellent invoke-build project.
+This is more of a scaffolding framework which can be used to kickstart a generic PowerShell module project. It includes the base files and scripts required to perform regular build releases, uploading to the powershell gallery, and other such fun. All the hard work is done with the excellent invoke-build project engine and a rather large set of build tasks for it.
 
 There are a few premises which should be known about this project.
+- This scaffolding works best with simple script modules where only public functions are being exported. This is largely due to the nature of how modules behave the moment you have to use export-modulemember. When you use this command to export anything then you must also define your functions or none of them will be exported. [This is all defined in the technet article for this command](https://technet.microsoft.com/en-us/library/hh849736.aspx). Though you can still use this project for some of the many automated benefitsit can provide, that is if you are willing to massage things a little bit.
 - I use serveral PowerShell 5 features but this doesn't mean that the underlying modules being created need to require PowerShell 5 (the default manifest file that gets created sets the required version to 3).
 - All documentation for the module gets automatically created as part of the build process. This documentation is created from the comment based help associated with every function. I personally find this to be the easiest way to keep my documentation up to date. All the code and tasks are open to be changed though. The beauty of a task based engine like invoke-build is that you can very easily use the existing tasks and create your own customizations.
 - Parts of this scaffolding were written specifically around the premise that the project is hosted in github.
@@ -14,7 +15,9 @@ There are a few premises which should be known about this project.
 - I've included a handful of other tasks that can be run directly with invoke-build. This includes testing out the documentation generation and code formatting. They are not included in the wrapper script at this time as it felt a bit like recreating a wheel (as invoke-build is so easy to use as it is).
 
 ### Step 1 - Initialization
-The content of this project should be placed in an empty directory with no other code whatsoever. Then kick off the initialize.ps1 script without parameters if you have no github project repository setup (less preferred).
+The content of this project should be placed **in an empty directory** with **no other code whatsoever**! This directory will be the home of your future project but is completely portable. Once you have the project working and building the way you want you can change the directory name or move the directory entirely.
+
+Anyway, kick off the initialize.ps1 script without parameters if you have no github project repository setup (less preferred but quicker initialization method).
 
 `.\Initialize.ps1`
 
@@ -22,16 +25,45 @@ Or with the 'GithubRepo' parameter if you have already created a Github project 
 
 `.\Initialize.ps1 -GithubRepo https://github.com/yourgithubaccount/yourgithubrepo.git'`
 
-This will start with opening up the .environment.ps1 file in notepad for editing. You need to populate your module name, its project website, tags, author, and description associated with the project. This file is dot sourced in several other initialization tasks and in the build process later on. Once saved you can go ahead and continue the initialization process. Several template files are copied out to appropriate locations. Additionally, the default module manifest file gets created.
+This will start with opening up the .\build\.environment.ps1 file in notepad for editing. You need to populate your module name, its project website, tags, author, and description associated with the project. This file is dot sourced in several other initialization tasks and in the build process later on. This file can be updated later on as well but it is imperitive that to have things in place for this initialization. I probably should have made this a for real config file format but this works for now. Here is how this file might look for say, my NLogModule project.
+```
+# The module we are building
+#   Example: 'FormatPowerShellCode'
+$ModuleToBuild = 'NLogModule'
+
+# Project website (used for external help cab file definition) 
+# Example: 'https://github.com/zloeber/FormatPowershellCode' 
+$ModuleWebsite = 'https://github.com/zloeber/NLogModule'
+
+# Some tags that describe your module. 
+# Example: @('Code Formatting', 'Module Creation', 'Build Scripts')
+$ModuleTags = @('NLog','PowerShell Logging','Logging')
+
+# Module Author
+$ModuleAuthor = 'Zachary Loeber'
+
+# Module Author
+$ModuleDescription = 'Use NLog to capture and log all calls to write-output, verbose, warning, error, and host'
+
+# Options - These affect how your eventual build will be run.
+$OptionFormatCode = $false
+$OptionAnalyzeCode = $true
+$OptionCombineFiles = $true
+
+# Additional paths in the source module which should be copied over to the final build release
+# Example: @('.\libs','.\data')
+$AdditionalModulePaths = @('.\lib')
+```
+Once saved you can go ahead and continue the initialization process. Several template files are copied out to appropriate locations. Additionally, the default module manifest file gets created.
 
 **Note**: *The starting module manifest file should be updated to suit your needs. The only items which ever get automatically updated in this file later on will be the version number and the exported functions. If you have exported aliases or other customizations the build process will do nothing to detect these things.*
 
-Later you can always edit this file to change options in the build or even move paths and such but you should NEVER run the Initialize.ps1 script again. Towards this end this script deletes the .createframework.ps1 invoke-build task script. If you goofed up then simply blow things away and start from scratch.
+The initialization script deletes the .createframework.ps1 invoke-build task script. If you goofed up then simply blow things away and start from scratch.
 
 You should go ahead and delete the initialize.ps1 script from your project root directory at this time as it is no longer usable.
 
 ### Step 2 - Flesh Out Your Module
-After the initialization has completed this directory should be all setup and 'buildable' without much more work needed other than adding your ps1 files to the right directories. Any function code for your module should be dropped into the src/public if it will be exported, src/private if it will not be exported, or src/other if it is code you want to run at the top of your module but isn't explicitly functions to be exported (small example ps1 included for your reference).
+After the initialization has completed this directory should be all setup and 'buildable' without much more work needed other than adding your ps1 files to the right directories. Any function code for your module should be dropped into the .\src\public if it will be exported, .\src\private if it will not be exported, or .\src\other if it is code you want to run at the top or bottom of your module.
 
 **Note:** *If you import the module without any public code at all (right after initializing for example) then the only private function I include with this template always gets exported for whatever reason (get-callerpreference). Because of this I purposefully error out of the build process if no public functions are defined.*
 
@@ -49,6 +81,10 @@ You should also probably update the default readme.md file that gets created as 
 The default version for a brand new module is set at 0.0.1. To build this module for a release simply run the Build.ps1 file
 
 `.\Build.ps1`
+
+or
+
+`.\Build.ps1 -BuildModule`
 
 This will go throught he process of combining the source files, populating the exportable functions, creating online help files, formatting the code, analyzing the script, and more. If everything builds without errors you will see the results populated in the release directory in two areas:
 1. In the release directory in a folder with the same name as the module (which is best practice btw)
@@ -93,6 +129,10 @@ Assuming you have a valid NugetAPI key in the psgalleryapi.txt file in your prof
 
 **Note:** *I've not figured out yet how to reset versions when uploading to the gallery. You always have to upload a newer version than what is already there so be extra certain you are ready to publish the module before doing this step.*
 
+Hey, one more point, you can chain things together and do a build, install and test, and upload to the powershell gallery in one fell swoop:
+
+`.\Build.ps1 -BuildModule -InstallAndTestModule -UploadPSGallery -ReleaseNotes 'First Upload'`
+
 ### Step 6 - Start Your Next Release
 ~~When you have finally uploaded your current release to github the version number will go up by 1 in the minor version release portion (so 0.0.1 will become 0.0.2).~~ (<--Not implemented yet)
 
@@ -105,6 +145,10 @@ To start working on your next release (or roll back to a prior release) you will
 Once this has been done you can proceed to build your module again:
 
 `.\Build.ps1`
+
+Oh, and if you have been paying attention up to this point you will have seen this coming. You can chain all this crap together into one command:
+
+`.\Build.ps1 -UpdateRelease -NewVersion '0.0.4' -BuildModule -InstallAndTestModule -UploadPSGallery  -ReleaseNotes 'Release 0.0.4'`
 
 ## Examples
 I started this little framework as a build script for [one of my projects](https://github.com/zloeber/FormatPowershellCode) so you can see it in action there if you like. I've since taken that code, made it a bit more generic, and added an initialization routine for new projects. As an exercise I adapted [another older project](https://github.com/zloeber/NLogModule) to use this build script as well. So this framework does work for me but you might need to do some tweaking to get it working for your own project but keep in mind that any module that exports more than functions will take additional work. (See the notes below to better understand why.)
@@ -146,14 +190,9 @@ As you might expect this will remove the entire CBH block which may or may not b
 - I need to probably figure out a way to update the build script on an already deployed module.
 - I really should deploy the current version of invoke-build with this script instead of depending on PowerShellGet (in case a newer version breaks things). I should actually do that for all the modules used in this project...
 
-
 ##Credits
 [Invoke-Build](https://github.com/nightroman/Invoke-Build) - A kick ass build automation tool written in PowerShell. It is the primary engine behind this little project.
 
 [Haroopad](http://pad.haroopress.com/) - Sweet Markdown Editor.
 
 [PowerShell Practice and Style](https://github.com/PoshCode/PowerShellPracticeAndStyle) - Great site to read over to learn everything you are needing to do to up your game in PowerShell.
-
-
-
-

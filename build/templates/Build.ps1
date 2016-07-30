@@ -7,6 +7,7 @@ param (
     [switch]$GitCheckin,
     [switch]$GitPush,
     [switch]$InstallAndTestModule,
+    [version]$NewVersion,
     [string]$ReleaseNotes
 )
 
@@ -25,6 +26,7 @@ else {
     throw 'How did you even get here?'
 }
 
+# Create a gallery profile?
 if ($CreatePSGalleryProfile) {
     try {
         Invoke-Build NewPSGalleryProfile
@@ -34,28 +36,18 @@ if ($CreatePSGalleryProfile) {
     }
 }
 
+# Update your release version?
 if ($UpdateRelease) {
-    Invoke-Build UpdateVersion
-}
-
-if ($UploadPSGallery) {
-    if ([string]::IsNullOrEmpty($ReleaseNotes)) {
-        throw '$ReleaseNotes needs to be specified to run this operation!'
+    if ($NewVersion -ne $null) {
+        $NewVersion.ToString() | Out-File -FilePath .\version.txt -Force
     }
+
     try {
-        Invoke-Build PublishPSGallery -ReleaseNotes $ReleaseNotes
+        Invoke-Build UpdateVersion
     }
     catch {
-        throw 'Unable to upload projec to the PowerShell Gallery!'
+        throw
     }
-}
-
-if ($GitCheckin) {
-
-}
-
-if ($GitPush) {
-
 }
 
 # If no parameters were specified or the build action was manually specified then kick off a standard build
@@ -69,6 +61,7 @@ if (($psboundparameters.count -eq 0) -or ($BuildModule))  {
     }
 }
 
+# Install and test the module?
 if ($InstallAndTestModule) {
     try {
         Invoke-Build InstallAndTestModule
@@ -79,6 +72,28 @@ if ($InstallAndTestModule) {
     }
 }
 
+# Upload to gallery?
+if ($UploadPSGallery) {
+    if ([string]::IsNullOrEmpty($ReleaseNotes)) {
+        throw '$ReleaseNotes needs to be specified to run this operation!'
+    }
+    try {
+        Invoke-Build PublishPSGallery -ReleaseNotes $ReleaseNotes
+    }
+    catch {
+        throw 'Unable to upload projec to the PowerShell Gallery!'
+    }
+}
+
+# Not implemented yet
+if ($GitCheckin) {
+
+}
+
+# Not implemented yet
+if ($GitPush) {
+
+}
 
 Write-Host ''
 Write-Host 'Attempting to clean up the session (loaded modules and such)...'
