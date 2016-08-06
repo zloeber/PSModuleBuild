@@ -27,6 +27,9 @@ $OptionFormatCode = $false
 $OptionAnalyzeCode = $true
 $OptionCombineFiles = $true
 
+# PlatyPS has been the cause of most of my build failures. This can help you isolate which functrion's CBH is causing you grief.
+$OptionRunPlatyPSVerbose = $false
+
 # Additional paths in the source module which should be copied over to the final build release
 # Example: @('.\libs','.\data')
 $AdditionalModulePaths = @()

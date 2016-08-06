@@ -1,5 +1,13 @@
 #Requires -Version 5
+param(
+    [string]$GithubRepo
+)
 
+$GitHubRepoParam = @{}
+
+if (-not [string]::IsNullOrEmpty($GithubRepo)) {
+        $GitHubRepoParam.GithubRepo = $GithubRepo
+}
 <#
 	Build script using Invoke-Build (https://github.com/nightroman/Invoke-Build)
 #>
@@ -21,7 +29,7 @@ else {
 
 # Kick off the new module scaffolding creation process build
 try {
-    Invoke-Build -File .createframework.ps1
+    Invoke-Build -File .createframework.ps1 @GitHubRepoParam
 
     # Ensure we cannot run this initialization process again
 	Remove-item .\.createframework.ps1 -Force

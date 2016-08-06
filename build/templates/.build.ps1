@@ -21,14 +21,17 @@ if  ($OptionFormatCode ) {
     $RequiredModules += 'FormatPowershellCode'
 }
 
+# Base source path
+$BaseSourceFolder = 'src'
+
 # Public functions (to be exported by file name as the function name)
-$PublicFunctionSource = 'src\public'
+$PublicFunctionSource = "$BaseSourceFolder\public"
 
 # Private function source
-$PrivateFunctionSource = 'src\private'
+$PrivateFunctionSource = "$BaseSourceFolder\private"
 
 # Other module source
-$OtherModuleSource = 'src\other'
+$OtherModuleSource = "$BaseSourceFolder\other"
 
 # Release directory. You typically want a module to reside in a folder of the same name in order to publish to psgallery
 $BaseReleaseFolder = 'release'
@@ -207,14 +210,18 @@ task GetPublicFunctions {
 # Synopsis: Assemble the module for release
 task CreateModulePSM1 {
     if ($Script:OptionCombineFiles) {
-        $CombineFiles = "## Pre-Loaded Module code ##`r`n`r`n"
-        Write-Host "      Other Source Files: .\$($ScratchFolder)\$($OtherModuleSource)"
-        Get-childitem  (Join-Path $ScratchPath "$($OtherModuleSource)\PreLoad.ps1") | foreach {
-            Write-Host "             $($_.Name)"
-            $CombineFiles += (Get-content $_ -Raw) + "`r`n`r`n"
+        $CombineFiles = ''
+        $PreloadFilePath = (Join-Path $ScratchPath "$($OtherModuleSource)\PreLoad.ps1")
+        if (Test-Path  $PreloadFilePath) {
+            $CombineFiles += "## Pre-Loaded Module code ##`r`n`r`n"
+            Write-Host "      Other Source Files: .\$($ScratchFolder)\$($OtherModuleSource)\PreLoad.ps1"
+            Get-childitem $PreloadFilePath | foreach {
+                Write-Host "             $($_.Name)"
+                $CombineFiles += (Get-content $_ -Raw) + "`r`n`r`n"
+            }
+            Write-Host -NoNewLine "      Combining preload source"
+            Write-Host -ForegroundColor Green '...Complete!'
         }
-        Write-Host -NoNewLine "      Combining preload source"
-        Write-Host -ForegroundColor Green '...Complete!'
 
         $CombineFiles += "## PRIVATE MODULE FUNCTIONS AND DATA ##`r`n`r`n"
         Write-Host  "      Private Source Files: .\$($ScratchFolder)\$($PrivateFunctionSource)"
@@ -234,14 +241,18 @@ task CreateModulePSM1 {
         Write-Host -NoNewline "      Combining public source files"
         Write-Host -ForegroundColor Green '...Complete!'
         $CombineFiles += "## Post-Load Module code ##`r`n`r`n"
-        Write-Host "      Other Source Files: .\$($ScratchFolder)\$($OtherModuleSource)"
-        Get-childitem  (Join-Path $ScratchPath "$($OtherModuleSource)\PostLoad.ps1") | foreach {
-            Write-Host "             $($_.Name)"
-            $CombineFiles += (Get-content $_ -Raw) + "`r`n`r`n"
+
+        $PostLoadPath = (Join-Path $ScratchPath "$($OtherModuleSource)\PostLoad.ps1")
+        if (Test-Path $PostLoadPath) {
+            Write-Host "      Other Source Files: .\$($ScratchFolder)\$($OtherModuleSource)\PostLoad.ps1"
+            Get-childitem  $PostLoadPath | foreach {
+                Write-Host "             $($_.Name)"
+                $CombineFiles += (Get-content $_ -Raw) + "`r`n`r`n"
+            }
+            Write-Host -NoNewLine "      Combining postload source"
+            Write-Host -ForegroundColor Green '...Complete!'
         }
-        Write-Host -NoNewLine "      Combining postload source"
-        Write-Host -ForegroundColor Green '...Complete!'
-    
+
         Set-Content -Path $Script:ReleaseModule  -Value $CombineFiles -Encoding UTF8
         Write-Host -NoNewLine '      Combining module functions and data into one PSM1 file'
         Write-Host -ForegroundColor Green '...Complete!'
@@ -257,6 +268,15 @@ task CreateModulePSM1 {
 
     $Script:AdditionalModulePaths | ForEach {
         Copy-Item -Path $_ -Recurse -Destination $StageReleasePath -Force
+    }
+}
+
+# Synopsis: Removes script signatures before creating a combined PSM1 file
+task RemoveScriptSignatures -Before CreateModulePSM1 {
+    if ($Script:OptionCombineFiles) {
+        Write-Host -NoNewLine '      Remove script signatures from all files'
+        Get-ChildItem -Path "$ScratchPath\$BaseSourceFolder" -Recurse -File | Foreach {Remove-Signature -FilePath $_.FullName}
+        Write-Host -ForegroundColor Green '...Complete!'
     }
 }
 
@@ -381,16 +401,24 @@ task CreateMarkdownHelp GetPublicFunctions, {
 
 # Synopsis: Build the markdown help files with PlatyPS
 task CreateExternalHelp {
+    $PlatyPSVerbose = @{}
+    if ($Script:OptionRunPlatyPSVerbose) {
+        $PlatyPSVerbose.Verbose = $true
+    }
     Write-Host -NoNewLine '      Creating markdown help files'
-    $null = New-ExternalHelp "$($StageReleasePath)\docs" -OutputPath "$($StageReleasePath)\en-US\" -Force
+    $null = New-ExternalHelp "$($StageReleasePath)\docs" -OutputPath "$($StageReleasePath)\en-US\" -Force @PlatyPSVerbose
     Write-Host -ForeGroundColor green '...Complete!'
 }
 
 # Synopsis: Build the help file CAB with PlatyPS
 task CreateUpdateableHelpCAB {
+    $PlatyPSVerbose = @{}
+    if ($Script:OptionRunPlatyPSVerbose) {
+        $PlatyPSVerbose.Verbose = $true
+    }
     Write-Host -NoNewLine "      Creating updateable help cab file"
     $LandingPage = "$($StageReleasePath)\docs\$($ModuleToBuild).md"
-    $null = New-ExternalHelpCab -CabFilesFolder "$($StageReleasePath)\en-US\" -LandingPagePath $LandingPage -OutputFolder "$($StageReleasePath)\en-US\"
+    $null = New-ExternalHelpCab -CabFilesFolder "$($StageReleasePath)\en-US\" -LandingPagePath $LandingPage -OutputFolder "$($StageReleasePath)\en-US\" @PlatyPSVerbose
     Write-Host -ForeGroundColor green '...Complete!'
 }
 
