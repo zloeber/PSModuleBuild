@@ -35,11 +35,18 @@ $OptionRunPlatyPSVerbose = $false
 $AdditionalModulePaths = @()
 
 # Please leave anything below this line alone
+
+# Ensure we bomb out if any required information is missing
 $ModuleToBuild, $ModuleWebsite, $ModuleAuthor, $ModuleDescription | Foreach {
     if ([string]::IsNullOrEmpty($_)) {
         Write-Error 'You must first define all of the environment variables in .buildenvironment.ps1!'
     }
-    if ($ModuleTags.Count -eq 0) {
-        Write-Error 'You must first assign a few tags to your module in .buildenvironment.ps1!'
-    }
+}
+if ($ModuleTags.Count -eq 0) {
+    Write-Error 'You must first assign a few tags to your module in .buildenvironment.ps1!'
+}
+
+# Update module tags to replace spaces with underscores
+for ($i = 0; $i -lt $ModuleTags.Count; $i++) {
+    $ModuleTags[$i] = $ModuleTags[$i] -replace ' ','_' 
 }

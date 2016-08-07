@@ -122,4 +122,12 @@ task UploadToGithub -if (-not [string]::IsNullOrEmpty($GithubRepo)) {
     exec { git push origin master }
 }
 
-task . UpdateBuildEnvironment, CreateModuleFramework, CreateInstallScript, CreateReadme, CreateModuleManifest, CreateModuleAboutHelp, CreateGitRepo, UploadToGithub
+task RemoveGitRepo {
+    if ((ls -Hidden -Path "`.\.git*").Count -gt 0) {
+        Write-Warning 'Removing current .git directory! This is normally exactly what you want to do when Initializing. Press Ctrl+C to cancel initialization now otherwise...'
+        pause
+        Remove-Item -Path "`.\.git*" -Recurse -Force
+    }
+}
+
+task . RemoveGitRepo, UpdateBuildEnvironment, CreateModuleFramework, CreateInstallScript, CreateReadme, CreateModuleManifest, CreateModuleAboutHelp, CreateGitRepo, UploadToGithub
