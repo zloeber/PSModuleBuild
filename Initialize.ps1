@@ -35,10 +35,20 @@ try {
 	Remove-item .\.createframework.ps1 -Force
 
     Write-Host ''
-    Write-Host -ForegroundColor:DarkYellow 'The new module framework has been created. You still need to populate your private and public functions to have anything meaningful.'
-    Write-Host -ForegroundColor:DarkYellow 'Once you are ready to build a release simply run the build.ps1 file in this directory. For more tasks (like publishing to the powershell gallery) please view the readme for this project at https://github.com/zloeber/PSModuleBuild'
     Write-Host ''
-    Write-Host -ForegroundColor:Cyan 'Note: To prevent accidents you can only ever run this initial process once. The original .createframework.ps1 build file has been deleted. Go ahead and delete Initialize.ps1 now to clean up your project directory and complete this process.'
+    Write-Host -Foregroundcolor Yellow 'Module framework has been created! Please review and make any relevant changes to the automatically generated psd1 manifest file.'
+    Write-Host ''
+    Write-Host -Foregroundcolor Yellow 'You can now start populating module in the following locations:'
+    Write-Host -Foregroundcolor Yellow '    src\private    - Any private functions should be individually included in this directory.'
+    Write-Host -Foregroundcolor Yellow '    src\public     - Any public functions should be individually included in this directory.'
+    Write-Host -Foregroundcolor Yellow '    src\other\PreLoad.ps1    - Load this code before any other code in this module. This will carry over to  your final build as well.'
+    Write-Host -Foregroundcolor Yellow '    src\other\PostLoad.ps1   - Load this code after any other code in this module. This will carry over to  your final build as well.'
+    Write-Host ''
+    Write-Host -Foregroundcolor Yellow 'When you are ready to release an initial version of your module run the included build script: .\Build.ps1'
+    Write-Host ''
+    Write-Host -Foregroundcolor Yellow 'For more information on what tasks can be performed with the included build script please visit https://github.com/zloeber/PSModuleBuild'
+    Write-Host ''
+    Write-Host -ForegroundColor:Cyan 'Note: The original .createframework.ps1 build file has been deleted. Go ahead and delete Initialize.ps1 now to clean up your project directory and complete this process.'
 }
 catch {
     # If it fails then show the error
