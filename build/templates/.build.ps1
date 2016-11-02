@@ -74,6 +74,13 @@ $ExternalHelp = @"
     #>
 "@
 
+if ($OptionTranscriptEnabled) {
+    Write-Output 'Transcript logging: TRUE'
+    $TranscriptLog = Join-Path $BuildToolPath $OptionTranscriptLogFile
+    Write-Output "TranscriptLog: $($TranscriptLog)"
+    Start-Transcript -Path $TranscriptLog -Append -WarningAction:SilentlyContinue
+}
+
 #Synopsis: Validate system requirements are met
 task ValidateRequirements {
     Write-Host -NoNewLine '      Running Powershell version 5?'
@@ -327,21 +334,19 @@ task UpdateCBH -Before CreateModulePSM1 {
     }
 }
 
+
 # Synopsis: Run PSScriptAnalyzer against the assembled module
 task AnalyzeScript -After CreateModulePSM1 -if {$OptionAnalyzeCode} {
     $Analysis = Invoke-ScriptAnalyzer -Path $StageReleasePath
     $AnalysisErrors = @($Analysis | Where-Object {@('Information','Warning') -notcontains $_.Severity})
 
     if ($AnalysisErrors.Count -ne 0) {
-        throw 'Script Analysis came up with some errors!'
+        Write-Host 'The following errors came up in the script analysis:'
+        $AnalysisErrors
+        Write-Host
+        Write-Host "Note that this was from the script analysis run against $StageReleasePath"
+        Prompt-ForBuildBreak -CustomError $AnalysisErrors
     }
-    
-    Write-Host -NoNewLine '      Analyzing script module' 
-    Write-Host -ForegroundColor Green '...Complete!'
-    $AnalysisWarnings = @($Analysis | Where-Object {$_.Severity -eq 'Warning'})
-    $AnalysisInfo =  @($Analysis | Where-Object {$_.Severity -eq 'Information'})
-    Write-Host -ForegroundColor Yellow "          Script Analysis Warnings = $($AnalysisWarnings.Count)" 
-    Write-Host "          Script Analysis Informational = $($AnalysisInfo.Count)"
 }
 
 # Synopsis: Build help files for module
@@ -557,6 +562,15 @@ task BuildSessionCleanup {
     }
     Write-Output "      Removing $ModuleToBuild module  (if loaded)."
     Remove-Module $ModuleToBuild -Erroraction Ignore
+
+    # Dot source any post build cleanup scripts.
+    Get-ChildItem $BuildToolPath/cleanup -Recurse -Filter "*.ps1" -File | Foreach { 
+        Write-Output "      Dot sourcing cleanup script file: $($_.Name)"
+        . $_.FullName
+    }
+    if ($OptionTranscriptEnabled) {
+        Stop-Transcript -WarningAction:Ignore
+    }
 }
 
 # Synopsis: Install the current built module to the local machine
