@@ -198,6 +198,55 @@ task PrepareStage {
     }
 }
 
+# Synopsis: Update public functions to include a template comment based help.
+task UpdateCBHtoScratch {
+     $CBHPattern = "(?ms)(^\s*\<#.*\.SYNOPSIS.*?#>)"
+     $CBHUpdates = 0
+    
+    # Create the directories
+    $null = New-Item "$($ScratchPath)\src" -ItemType:Directory -Force
+    $null = New-Item "$($ScratchPath)\$($PublicFunctionSource)" -ItemType:Directory -Force
+    
+    Write-Host "      Attempting to insert comment based help into functions (saving to our scratch directory only)."
+    Get-ChildItem "$($ScriptRoot)\$($PublicFunctionSource)" -Filter *.ps1 | Foreach {
+        $FileName = $_.Name
+        $FullFilePath = $_.FullName
+        Write-Host "      Public function - $($FileName)"
+        $currscript = Get-Content $FullFilePath -Raw
+        $CBH = $currscript | New-CommentBasedHelp
+        $currscriptblock = [scriptblock]::Create($currscript)
+        . $currscriptblock
+        $currfunct = get-command $CBH.FunctionName
+        
+        Write-Host -NoNewline "      ...Comment based help already exists: "
+        if ($currfunct.definition -notmatch $CBHPattern) {
+            $CBHUpdates++
+            Write-Host -ForegroundColor Green "      FALSE!"
+            Write-Host "      ...inserting template CBH and writing to : $($ScratchFolder)\$($PublicFunctionSource)\$($FileName)"
+            $UpdatedFunct = 'Function ' + $currfunct.Name + ' {' + "`r`n" + $CBH.CBH + "`r`n" + $currfunct.definition + "`r`n" + '}'
+            $UpdatedFunct | Out-File "$($ScratchPath)\$($PublicFunctionSource)\$($FileName)" -Encoding:utf8 -force
+        }
+        else {
+            Write-Host -ForegroundColor Red "      TRUE!"
+            #Write-Host "      ...copying exisiting function to : $($ScratchFolder)\$($PublicFunctionSource)\$($FileName)"
+            #Copy-Item -Path $FullFilePath -Destination "$($ScratchPath)\$($PublicFunctionSource)\$($FileName)"
+        }
+
+        Remove-Item Function:\$($currfunct.Name)
+    }
+    Write-Host ''
+    Write-Host -ForegroundColor Yellow '****************************************************************************************************'
+    Write-Host -foregroundcolor Yellow "  Updated Functions: $CBHUpdates"
+    if ($CBHUpdates -gt 0) {    
+        Write-Host ''
+        Write-Host -foregroundcolor Yellow "  Updated Function Location: $($ScratchPath)\$($PublicFunctionSource)"
+        Write-Host ''
+        Write-Host -foregroundcolor Yellow "  NOTE: Please inspect these files closely. If they look good merge them back into your project"
+    }
+    Write-Host -ForegroundColor Yellow '****************************************************************************************************'
+    $null = Read-Host 'Press Enter to continue...'
+}
+
 # Synopsis:  Collect a list of our public methods for later module manifest updates
 task GetPublicFunctions {
     $Exported = @()
@@ -637,6 +686,13 @@ task BuildWithoutCodeFormatting `
         CreateModulePSM1, 
         PushVersionRelease, 
         PushCurrentRelease, 
+        BuildSessionCleanup
+
+# Synopsis: Instert Comment Based Help where it doesn't already exist (output to scratch directory)
+task  InsertMissingCBH `
+        Configure, 
+	    Clean, 
+        UpdateCBHtoScratch,
         BuildSessionCleanup
 
 # Synopsis: Test the code formatting module only

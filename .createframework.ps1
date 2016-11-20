@@ -90,7 +90,7 @@ task CreateReadme {
         -replace '{{ModuleName}}', $ModuleToBuild `
         -replace '{{ModuleDescription}}', $ModuleDescription `
         -replace '{{ModuleAuthor}}', $ModuleAuthor `
-        -replace '{{ModuleWebsite}}', $ModuleWebsite | Out-File ".\readme.md"
+        -replace '{{ModuleWebsite}}', $ModuleWebsite | Out-File ".\readme.md" -Encoding:utf8
     Write-Host -ForegroundColor Green '...Done!' 
 }
 

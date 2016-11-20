@@ -36,7 +36,27 @@ $OptionRunPlatyPSVerbose = $false
 # Example: @('.\libs','.\data')
 $AdditionalModulePaths = @()
 
+# If you will be attempting to autogenerate comment based help this is the base template that will be used
+# You need to leave the %%<string>%% tags to automatically be populated.
+$CBHTemplate = @'
+<#
+.SYNOPSIS
+    TBD
+.DESCRIPTION
+    TBD
+%%PARAMETER%%
+.EXAMPLE
+    TBD
+.NOTES
+    Author: %%AUTHOR%%
+.LINK
+    %%LINK%%
+#>
+'@ -replace '%%LINK%%',$ModuleWebsite -replace '%%AUTHOR%%',$ModuleAuthor
+
+########################################
 # !! Please leave anything below this line alone !!
+########################################
 
 # Ensure we bomb out if any required information is missing
 $ModuleToBuild, $ModuleWebsite, $ModuleAuthor, $ModuleDescription | Foreach {

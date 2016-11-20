@@ -4,6 +4,7 @@ param (
     [switch]$CreatePSGalleryProfile,
     [switch]$UpdateRelease,
     [switch]$UploadPSGallery,
+    [switch]$InsertCBH,
     [switch]$GitCheckin,
     [switch]$GitPush,
     [switch]$InstallAndTestModule,
@@ -24,6 +25,16 @@ if (get-module InvokeBuild -ListAvailable) {
 }
 else {
     throw 'How did you even get here?'
+}
+
+# Update public function CBH?
+if ($InsertCBH) {
+    try {
+        Invoke-Build InsertMissingCBH
+    }
+    catch {
+        throw
+    }
 }
 
 # Create a gallery profile?
