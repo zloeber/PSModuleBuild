@@ -1,11 +1,10 @@
 # Step 6 - Start Your Next Release
-~~When you have finally uploaded your current release to github the version number will go up by 1 in the minor version release portion (so 0.0.1 will become 0.0.2).~~ (<--Not implemented yet)
 
 To start working on your next release (or roll back to a prior release) you will need to update the version.txt file within your project directory. But if you go to build the current module again it will poop out as the version release in this file does not match the version found in your module manifest file. **This is by design**. In order to confirm you are ready to start working on this release you need to run the following.
 
 `.\Build.ps1 -UpdateRelease`
 
-**Note:** *This will spit out an error as we are running the Version task in safe mode and looking for an error. This lets us reuse the task that we use for loading the version number. If the final build shows as succeeded you have nothing to worry about though.*
+**Note:** *This will spit out an error as we are running the Version task in safe mode and looking for an error. This lets us re-use the task that we use for loading the version number. If the final build shows as succeeded you have nothing to worry about though.*
 
 Once this has been done you can proceed to build your module again:
 
