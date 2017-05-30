@@ -1,4 +1,4 @@
-#PSModuleBuild Configuration
+# PSModuleBuild Configuration
 Each project has a psmodulebuild configuration file that will get dot sourced into the build engine. This file will, in turn, pull in settings from a json file in the same directory.
 
 **build\<modulename>.buildenvironment.ps1** - The initial dot sourced configuration script for your project

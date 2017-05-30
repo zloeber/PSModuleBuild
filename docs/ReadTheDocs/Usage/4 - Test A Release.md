@@ -1,4 +1,4 @@
-#Step 4 - Test a Release
+# Step 4 - Test a Release
 You may get a build to complete without errors but that doesn't mean that the module will behave as expected. You can do a quick module install and load test if you like:
 
 `.\Build.ps1 -InstallAndTestModule`

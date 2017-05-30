@@ -1,4 +1,4 @@
-#Step 5 - Upload A PowerShell Gallery Release (Optional)
+# Step 5 - Upload A PowerShell Gallery Release (Optional)
 If you have plans to upload your module to the PowerShell Gallery then this build script can help automate the process a bit. You will still need to create an account and attain an API key from the PowerShell Gallery [website](https://www.powershellgallery.com/).
 
 Once you have attained your API key you will need to update your build configuration file with it.

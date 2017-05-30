@@ -1,4 +1,4 @@
-#Step 3 - Build a Release
+# Step 3 - Build a Release
 
 The default version for a brand new module is set at 0.0.1. To build this module for a release simply run the Build.ps1 file
 
